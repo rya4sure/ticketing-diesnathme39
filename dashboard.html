@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Peserta</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 2rem 1rem; }
+    .wrap { max-width: 900px; /* Diperlebar sedikit agar tabel tidak terlalu sesak */ margin: 0 auto; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat { background: #fff; border-radius: 10px; padding: 1rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .stat-num { font-size: 28px; font-weight: 600; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+    .card { background: #fff; border-radius: 10px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+    th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; color: #888; font-weight: 500; }
+    td { padding: 10px; border-bottom: 1px solid #f5f5f5; }
+    tr:last-child td { border-bottom: none; }
+    button { padding: 8px 16px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 1rem; }
+    button:hover { background: #333; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Dashboard Peserta</h1>
+    <p class="sub">TechFest 2025</p>
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="s-total">-</div><div class="stat-label">Total Daftar</div></div>
+      <div class="stat"><div class="stat-num" id="s-hadir">-</div><div class="stat-label">Sudah Hadir</div></div>
+      <div class="stat"><div class="stat-num" id="s-belum">-</div><div class="stat-label">Belum Hadir</div></div>
+    </div>
+    <button onclick="loadData()">Refresh Data</button>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Angkatan</th>
+            <th>Harga</th>
+            <th>Kode Tiket</th>
+            <th>Metode</th>
+            <th>Status Bayar</th>
+            <th>Bukti</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tabel-peserta">
+          <tr><td colspan="8" style="text-align:center;color:#888;padding:2rem;">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
+
+    function badgeBayar(status) {
+      const map = {
+        'belum_bayar': ['#fdecea', '#c0392b', 'Belum Bayar'],
+        'menunggu_konfirmasi': ['#fff3cd', '#856404', 'Menunggu Konfirmasi'],
+        'lunas': ['#e6f4ea', '#1a7f3c', 'Lunas']
+      }
+      const s = map[status] || map['belum_bayar']
+      return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500;background:${s};color:${s[1]}">${s[2]}</span>`
+    }
+
+    async function konfirmasi(kode) {
+      if (!confirm('Konfirmasi pembayaran untuk kode ' + kode + '?')) return
+      const { error } = await dbClient.from('peserta').update({ status_bayar: 'lunas' }).eq('kode_tiket', kode)
+      if (!error) loadData()
+    }
+
+    async function loadData() {
+      const { data, error } = await dbClient.from('peserta').select('*').order('created_at', { ascending: false })
+      if (error || !data) {
+        document.getElementById('tabel-peserta').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#c0392b;">Gagal memuat data.</td></tr>'
+        return
+      }
+      
+      const total = data.length
+      const hadir = data.filter(p => p.sudah_hadir).length
+      document.getElementById('s-total').textContent = total
+      document.getElementById('s-hadir').textContent = hadir
+      document.getElementById('s-belum').textContent = total - hadir
+
+      if (total === 0) {
+        document.getElementById('tabel-peserta').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:2rem;">Belum ada peserta.</td></tr>'
+        return
+      }
+
+      document.getElementById('tabel-peserta').innerHTML = data.map(p => {
+        const linkBukti = p.bukti_bayar 
+          ? '<a href="' + CONFIG.supabase.url + '/storage/v1/object/public/bukti-bayar/' + p.bukti_bayar + '" target="_blank" style="font-size:12px;color:#1a7f3c">Lihat</a>' 
+          : '—';
+          
+        const btnKonfirmasi = p.status_bayar === 'menunggu_konfirmasi' 
+          ? '<button onclick="konfirmasi(\'' + p.kode_tiket + '\')" style="padding:4px 10px;font-size:12px;width:auto;margin:0">Konfirmasi</button>' 
+          : '—';
+
+        return `
+        <tr>
+          <td>${p.nama}<br/><span style="font-size:11px;color:#aaa">${p.email}</span></td>
+          <td>${p.angkatan || '—'}</td>
+          <td style="font-weight:500">Rp ${p.harga ? p.harga.toLocaleString('id-ID') : '—'}</td>
+          <td style="font-family:monospace;font-size:12px;color:#555;">${p.kode_tiket}</td>
+          <td>${p.metode_bayar || '—'}</td>
+          <td>${badgeBayar(p.status_bayar)}</td>
+          <td>${linkBukti}</td>
+          <td>${btnKonfirmasi}</td>
+        </tr>
+        `;
+      }).join('');
+    }
+    
+    loadData()
+  </script>
+</body>
+</html>
