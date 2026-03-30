@@ -37,7 +37,7 @@
   <div class="card">
     <div id="main-wrap">
       <h1>Selesaikan Pembayaran</h1>
-      <p class="sub">TechFest 2025 · Sabtu, 15 November 2025</p>
+      <p class="sub">Dies Natalis HME Ke-39 · Jumat, 3 April 2026</p>
 
       <div class="info-box">
         <div class="info-row">
@@ -47,6 +47,10 @@
         <div class="info-row">
           <span class="info-label">Angkatan</span>
           <span class="info-val" id="i-angkatan">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Menu</span>
+          <span class="info-val" id="i-menu">—</span>
         </div>
         <div class="info-row">
           <span class="info-label">Kode Tiket</span>
@@ -93,30 +97,13 @@
     const METODE_INFO = {
       qris: {
         title: 'Scan QRIS di bawah ini',
-        html: `<img src="qris.png" class="qris-img" alt="QRIS TechFest 2025"/>`
+        html: `<img src="qris.png" class="qris-img" alt="QRIS Dies Natalis"/>`
       },
-      bri: {
-        title: 'Transfer ke rekening BRI',
+      mandiri: {
+        title: 'Transfer ke rekening Bank Mandiri',
         html: `
-          <p class="rekening">1234567890</p>
-          <p class="rekening-sub">a.n. Nama Panitia</p>
-          <p style="font-size:12px;color:#aaa;margin-top:8px;">Ganti dengan nomor rekening BRI kamu</p>
-        `
-      },
-      gopay: {
-        title: 'Transfer ke GoPay',
-        html: `
-          <p class="rekening">081234567890</p>
-          <p class="rekening-sub">a.n. Nama Panitia</p>
-          <p style="font-size:12px;color:#aaa;margin-top:8px;">Ganti dengan nomor GoPay kamu</p>
-        `
-      },
-      dana: {
-        title: 'Transfer ke Dana',
-        html: `
-          <p class="rekening">081234567890</p>
-          <p class="rekening-sub">a.n. Nama Panitia</p>
-          <p style="font-size:12px;color:#aaa;margin-top:8px;">Ganti dengan nomor Dana kamu</p>
+          <p class="rekening">1120026485107</p>
+          <p class="rekening-sub">a.n. Rizal Setia Putra</p>
         `
       }
     }
@@ -127,9 +114,11 @@
     const angkatan = params.get('angkatan')
     const harga = params.get('harga')
     const metode = params.get('metode')
+    const menu = params.get('menu')
 
     document.getElementById('i-nama').textContent = nama || '—'
     document.getElementById('i-angkatan').textContent = angkatan || '—'
+    document.getElementById('i-menu').textContent = menu || '—'
     document.getElementById('i-kode').textContent = kode || '—'
     document.getElementById('i-harga').textContent = harga ? 'Rp ' + parseInt(harga).toLocaleString('id-ID') : '—'
 
@@ -176,7 +165,11 @@
 
       const { error: updateError } = await dbClient
         .from('peserta')
-        .update({ status_bayar: 'menunggu_konfirmasi', bukti_bayar: fileName, metode_bayar: metode })
+        .update({
+          status_bayar: 'menunggu_konfirmasi',
+          bukti_bayar: fileName,
+          metode_bayar: metode
+        })
         .eq('kode_tiket', kode)
 
       if (updateError) {
