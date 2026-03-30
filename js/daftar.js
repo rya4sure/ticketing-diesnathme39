@@ -141,6 +141,7 @@ async function daftar() {
   const kode = genKode()
   const harga = HARGA[angkatan]
 
+  // Simpan data pendaftaran ke Supabase
   const { error } = await dbClient
     .from('peserta')
     .insert([{
@@ -163,34 +164,7 @@ async function daftar() {
     return
   }
 
+  // Jika sukses masuk database, langsung lempar ke halaman bayar
   const angkatanLabel = LABEL_ANGKATAN[angkatan]
   window.location.href = `bayar.html?kode=${kode}&nama=${encodeURIComponent(nama)}&angkatan=${encodeURIComponent(angkatanLabel)}&harga=${harga}&metode=${metode}&menu=${encodeURIComponent(menu)}`
-}
-
-async function kirimEmail(nama, email, kode) {
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + CONFIG.resend.apiKey
-    },
-    body: JSON.stringify({
-      from: 'onboarding@resend.dev',
-      to: email,
-      subject: 'Tiket Dies Natalis HME Ke-39 - ' + kode,
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:2rem;">
-          <h2 style="margin-bottom:4px;">Dies Natalis HME Ke-39</h2>
-          <p style="color:#888;font-size:13px;">Jumat, 3 April 2026 · Villa Rumah Kayu Organik</p>
-          <hr style="margin:1.5rem 0;border:none;border-top:1px solid #eee"/>
-          <p>Halo <strong>${nama}</strong>,</p>
-          <p style="margin-top:8px;">Pendaftaran kamu berhasil! Berikut kode tiketmu:</p>
-          <div style="background:#f5f5f5;border-radius:8px;padding:1rem;text-align:center;margin:1.5rem 0;">
-            <p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${kode}</p>
-          </div>
-          <p style="font-size:13px;color:#666;">Tunjukkan kode ini saat check-in di hari-H.</p>
-        </div>
-      `
-    })
-  })
 }

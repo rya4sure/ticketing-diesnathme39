@@ -75,6 +75,9 @@
   <script>
     const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
 
+    // TODO: GANTI TULISAN DI BAWAH INI DENGAN URL GOOGLE APPS SCRIPT KAMU
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzN8UpkQpm3DxMq0VX73lM3PsaeGgjIuEtFkxaB3_t4T0veuEgD4oM3Ka_DMVndmuWp/exec";
+
     function showToast(pesan) {
       const toast = document.getElementById('toast')
       toast.textContent = pesan
@@ -82,14 +85,15 @@
       setTimeout(() => toast.classList.remove('show'), 3000)
     }
 
+    // VERSI ANTI-BADAI: Menuliskan HTML secara eksplisit tanpa Array
     function badgeBayar(status) {
-      const map = {
-        'belum_bayar': ['#fdecea', '#c0392b', 'Belum Bayar'],
-        'menunggu_konfirmasi': ['#fff3cd', '#856404', 'Menunggu Konfirmasi'],
-        'lunas': ['#e6f4ea', '#1a7f3c', 'Lunas']
+      if (status === 'lunas') {
+        return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;background:#e6f4ea;color:#1a7f3c">Lunas</span>';
+      } else if (status === 'menunggu_konfirmasi') {
+        return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;background:#fff3cd;color:#856404">Menunggu Konfirmasi</span>';
+      } else {
+        return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;background:#fdecea;color:#c0392b">Belum Bayar</span>';
       }
-      const s = map[status] || map['belum_bayar']
-      return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500;background:${s[0]};color:${s[1]}">${s[2]}</span>`
     }
 
     async function konfirmasi(kode, btnEl) {
@@ -98,6 +102,7 @@
       btnEl.disabled = true
       btnEl.textContent = 'Memproses...'
 
+      // 1. Update ke Supabase
       const { error } = await dbClient
         .from('peserta')
         .update({ status_bayar: 'lunas' })
@@ -110,6 +115,7 @@
         return
       }
 
+      // 2. Ambil data peserta untuk dikirim via email
       const { data: peserta } = await dbClient
         .from('peserta')
         .select('*')
@@ -117,23 +123,27 @@
         .single()
 
       if (peserta) {
+        if (GAS_URL === "MASUKKAN_URL_GOOGLE_SCRIPT_DI_SINI") {
+          showToast('✓ Lunas! Tapi email gagal karena URL GAS belum dimasukkan.');
+          loadData();
+          return;
+        }
+
         try {
-          await fetch(CONFIG.supabase.url + '/functions/v1/kirim-tiket', {
+          // 3. Tembak data ke Google Apps Script
+          await fetch(GAS_URL, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + CONFIG.supabase.anonKey
+              'Content-Type': 'text/plain' 
             },
             body: JSON.stringify({
               nama: peserta.nama,
               email: peserta.email,
-              kode: peserta.kode_tiket,
-              angkatan: peserta.angkatan,
-              menu: peserta.menu,
-              harga: peserta.harga
+              kode_tiket: peserta.kode_tiket,
+              menu: peserta.menu
             })
           })
-          showToast('✓ Dikonfirmasi & tiket dikirim ke ' + peserta.email)
+          showToast('✓ Dikonfirmasi & E-Tiket dikirim ke ' + peserta.email)
         } catch (e) {
           showToast('✓ Dikonfirmasi tapi gagal kirim email.')
         }
