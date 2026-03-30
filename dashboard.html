@@ -7,7 +7,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #f5f5f5; padding: 2rem 1rem; }
-    .wrap { max-width: 900px; /* Diperlebar sedikit agar tabel tidak terlalu sesak */ margin: 0 auto; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
     h1 { font-size: 20px; margin-bottom: 4px; }
     .sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
     .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
@@ -15,24 +15,37 @@
     .stat-num { font-size: 28px; font-weight: 600; }
     .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
     .card { background: #fff; border-radius: 10px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
     th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; color: #888; font-weight: 500; }
-    td { padding: 10px; border-bottom: 1px solid #f5f5f5; }
+    td { padding: 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    button { padding: 8px 16px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 1rem; }
-    button:hover { background: #333; }
+    .btn-refresh { padding: 8px 16px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 1rem; }
+    .btn-refresh:hover { background: #333; }
+    .btn-konfirmasi { padding: 4px 10px; font-size: 12px; background: #1a7f3c; color: #fff; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .btn-konfirmasi:hover { background: #145f2e; }
+    .btn-konfirmasi:disabled { background: #999; cursor: not-allowed; }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #111; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 13px; display: none; z-index: 999; }
+    .toast.show { display: block; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Dashboard Peserta</h1>
-    <p class="sub">TechFest 2025</p>
+    <p class="sub" style="margin-bottom: 1rem;">Dies Natalis HME Ke-39</p>
+
     <div class="stats">
       <div class="stat"><div class="stat-num" id="s-total">-</div><div class="stat-label">Total Daftar</div></div>
       <div class="stat"><div class="stat-num" id="s-hadir">-</div><div class="stat-label">Sudah Hadir</div></div>
       <div class="stat"><div class="stat-num" id="s-belum">-</div><div class="stat-label">Belum Hadir</div></div>
     </div>
-    <button onclick="loadData()">Refresh Data</button>
+
+    <div class="stats" style="margin-top: -8px;">
+      <div class="stat"><div class="stat-num" id="s-bakar" style="color:#d35400;">-</div><div class="stat-label">Ayam Bakar</div></div>
+      <div class="stat"><div class="stat-num" id="s-katsu" style="color:#d35400;">-</div><div class="stat-label">Ayam Katsu</div></div>
+      <div class="stat"><div class="stat-num" id="s-lava" style="color:#d35400;">-</div><div class="stat-label">Ayam Hot Lava</div></div>
+    </div>
+
+    <button class="btn-refresh" onclick="loadData()">Refresh Data</button>
     <div class="card">
       <table>
         <thead>
@@ -41,6 +54,7 @@
             <th>Angkatan</th>
             <th>Harga</th>
             <th>Kode Tiket</th>
+            <th>Menu</th>
             <th>Metode</th>
             <th>Status Bayar</th>
             <th>Bukti</th>
@@ -48,16 +62,25 @@
           </tr>
         </thead>
         <tbody id="tabel-peserta">
-          <tr><td colspan="8" style="text-align:center;color:#888;padding:2rem;">Memuat data...</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:#888;padding:2rem;">Memuat data...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-  
+
+  <div class="toast" id="toast"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script>
     const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
+
+    function showToast(pesan) {
+      const toast = document.getElementById('toast')
+      toast.textContent = pesan
+      toast.classList.add('show')
+      setTimeout(() => toast.classList.remove('show'), 3000)
+    }
 
     function badgeBayar(status) {
       const map = {
@@ -66,57 +89,112 @@
         'lunas': ['#e6f4ea', '#1a7f3c', 'Lunas']
       }
       const s = map[status] || map['belum_bayar']
-      return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500;background:${s};color:${s[1]}">${s[2]}</span>`
+      return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500;background:${s[0]};color:${s[1]}">${s[2]}</span>`
     }
 
-    async function konfirmasi(kode) {
+    async function konfirmasi(kode, btnEl) {
       if (!confirm('Konfirmasi pembayaran untuk kode ' + kode + '?')) return
-      const { error } = await dbClient.from('peserta').update({ status_bayar: 'lunas' }).eq('kode_tiket', kode)
-      if (!error) loadData()
+
+      btnEl.disabled = true
+      btnEl.textContent = 'Memproses...'
+
+      const { error } = await dbClient
+        .from('peserta')
+        .update({ status_bayar: 'lunas' })
+        .eq('kode_tiket', kode)
+
+      if (error) {
+        showToast('Gagal konfirmasi: ' + error.message)
+        btnEl.disabled = false
+        btnEl.textContent = 'Konfirmasi'
+        return
+      }
+
+      const { data: peserta } = await dbClient
+        .from('peserta')
+        .select('*')
+        .eq('kode_tiket', kode)
+        .single()
+
+      if (peserta) {
+        try {
+          await fetch(CONFIG.supabase.url + '/functions/v1/kirim-tiket', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + CONFIG.supabase.anonKey
+            },
+            body: JSON.stringify({
+              nama: peserta.nama,
+              email: peserta.email,
+              kode: peserta.kode_tiket,
+              angkatan: peserta.angkatan,
+              menu: peserta.menu,
+              harga: peserta.harga
+            })
+          })
+          showToast('✓ Dikonfirmasi & tiket dikirim ke ' + peserta.email)
+        } catch (e) {
+          showToast('✓ Dikonfirmasi tapi gagal kirim email.')
+        }
+      }
+
+      loadData()
     }
 
     async function loadData() {
-      const { data, error } = await dbClient.from('peserta').select('*').order('created_at', { ascending: false })
+      const { data, error } = await dbClient
+        .from('peserta')
+        .select('*')
+        .order('created_at', { ascending: false })
+
       if (error || !data) {
-        document.getElementById('tabel-peserta').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#c0392b;">Gagal memuat data.</td></tr>'
+        document.getElementById('tabel-peserta').innerHTML =
+          '<tr><td colspan="9" style="text-align:center;color:#c0392b;">Gagal memuat data.</td></tr>'
         return
       }
-      
+
       const total = data.length
       const hadir = data.filter(p => p.sudah_hadir).length
+
       document.getElementById('s-total').textContent = total
       document.getElementById('s-hadir').textContent = hadir
       document.getElementById('s-belum').textContent = total - hadir
+      document.getElementById('s-bakar').textContent = data.filter(p => p.menu === 'Ayam Bakar').length
+      document.getElementById('s-katsu').textContent = data.filter(p => p.menu === 'Ayam Katsu').length
+      document.getElementById('s-lava').textContent = data.filter(p => p.menu === 'Ayam Hot Lava').length
 
       if (total === 0) {
-        document.getElementById('tabel-peserta').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:2rem;">Belum ada peserta.</td></tr>'
+        document.getElementById('tabel-peserta').innerHTML =
+          '<tr><td colspan="9" style="text-align:center;color:#888;padding:2rem;">Belum ada peserta.</td></tr>'
         return
       }
 
       document.getElementById('tabel-peserta').innerHTML = data.map(p => {
-        const linkBukti = p.bukti_bayar 
-          ? '<a href="' + CONFIG.supabase.url + '/storage/v1/object/public/bukti-bayar/' + p.bukti_bayar + '" target="_blank" style="font-size:12px;color:#1a7f3c">Lihat</a>' 
-          : '—';
-          
-        const btnKonfirmasi = p.status_bayar === 'menunggu_konfirmasi' 
-          ? '<button onclick="konfirmasi(\'' + p.kode_tiket + '\')" style="padding:4px 10px;font-size:12px;width:auto;margin:0">Konfirmasi</button>' 
-          : '—';
+        const linkBukti = p.bukti_bayar
+          ? `<a href="${CONFIG.supabase.url}/storage/v1/object/public/bukti-bayar/${p.bukti_bayar}" target="_blank" style="font-size:12px;color:#1a7f3c">Lihat</a>`
+          : '—'
+
+        const btnKonfirmasi = p.status_bayar === 'menunggu_konfirmasi'
+          ? `<button class="btn-konfirmasi" onclick="konfirmasi('${p.kode_tiket}', this)">Konfirmasi</button>`
+          : '—'
 
         return `
-        <tr>
-          <td>${p.nama}<br/><span style="font-size:11px;color:#aaa">${p.email}</span></td>
-          <td>${p.angkatan || '—'}</td>
-          <td style="font-weight:500">Rp ${p.harga ? p.harga.toLocaleString('id-ID') : '—'}</td>
-          <td style="font-family:monospace;font-size:12px;color:#555;">${p.kode_tiket}</td>
-          <td>${p.metode_bayar || '—'}</td>
-          <td>${badgeBayar(p.status_bayar)}</td>
-          <td>${linkBukti}</td>
-          <td>${btnKonfirmasi}</td>
-        </tr>
-        `;
-      }).join('');
+          <tr>
+            <td>${p.nama}<br/><span style="font-size:11px;color:#aaa">${p.email}</span></td>
+            <td>${p.angkatan || '—'}</td>
+            <td style="font-weight:500">Rp ${p.harga ? p.harga.toLocaleString('id-ID') : '—'}</td>
+            <td style="font-family:monospace;font-size:12px;color:#555;">${p.kode_tiket}</td>
+            <td style="font-weight:600;color:#111;">${p.menu || '—'}</td>
+            <td>${p.metode_bayar || '—'}</td>
+            <td>${badgeBayar(p.status_bayar)}</td>
+            <td>${linkBukti}</td>
+            <td>${btnKonfirmasi}</td>
+          </tr>
+        `
+      }).join('')
     }
-    
+
     loadData()
   </script>
 </body>
