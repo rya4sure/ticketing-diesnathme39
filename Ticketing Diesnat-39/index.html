@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dies Natalis HME Ke-39</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+    .card { background: #fff; border-radius: 12px; padding: 2rem; max-width: 420px; width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+    .sub a { color: #0066cc; text-decoration: none; font-weight: 500; margin-left: 4px; }
+    .sub a:hover { text-decoration: underline; }
+    label { font-size: 13px; color: #555; display: block; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 4px; outline: none; background: #fff; }
+    input:focus, select:focus { border-color: #333; }
+    input.error, select.error { border-color: #e24b4a; }
+    .field { margin-bottom: 12px; }
+    .field-err { font-size: 11px; color: #e24b4a; margin-top: 3px; display: none; }
+    .harga-box { background: #f0faf4; border: 1px solid #a8d5b5; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: none; }
+    .harga-box p { font-size: 13px; color: #555; }
+    .harga-box span { font-size: 18px; font-weight: 600; color: #1a7f3c; }
+    button { width: 100%; padding: 10px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 4px; }
+    button:hover { background: #333; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    .err { color: #e24b4a; font-size: 12px; margin-bottom: 8px; display: none; }
+    .success { text-align: center; display: none; }
+    .success h2 { font-size: 18px; margin-bottom: 8px; }
+    .success p { font-size: 13px; color: #666; }
+    .menu-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    .menu-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; text-align: center; transition: all 0.2s ease; }
+    .menu-card:hover { border-color: #888; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+    .menu-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-bottom: 1px solid #ddd; }
+    .menu-card p { font-size: 12px; color: #333; padding: 8px 4px; font-weight: 500; line-height: 1.3; }
+    .menu-card.active { border-color: #111; border-width: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="form-wrap">
+      <h1>Dies Natalis HME Ke-39</h1>
+      <p class="sub">Jumat, 3 April 2026 · Villa Rumah Kayu Organik<a href="https://maps.app.goo.gl/qWctWrv8We7Htq1M9?g_st=ic" target="_blank">(Lihat di Maps)</a></p>
+
+      <div class="field">
+        <label>Nama Lengkap</label>
+        <input type="text" id="nama" placeholder="cth. Jidan Prayoga" />
+        <p class="field-err" id="err-nama"></p>
+      </div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="cth. zidaneganteng@email.com" />
+        <p class="field-err" id="err-email"></p>
+      </div>
+
+      <div class="field">
+        <label>No. HP</label>
+        <input type="text" id="hp" placeholder="cth. 081234567890" />
+        <p class="field-err" id="err-hp"></p>
+      </div>
+
+      <div class="field">
+        <label>Angkatan</label>
+        <select id="angkatan" onchange="updateHarga()">
+          <option value="">-- Pilih Angkatan --</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023 & D4 2022</option>
+          <option value="alumni">Alumni</option>
+        </select>
+        <p class="field-err" id="err-angkatan"></p>
+      </div>
+
+      <div class="harga-box" id="harga-box" style="display:none;">
+        <p>Harga tiket untuk angkatan <strong id="label-angkatan"></strong></p>
+        <span id="label-harga"></span>
+      </div>
+
+      <div class="field" id="wrap-menu" style="display:none;">
+        <label>Pilih Menu Makan (Wajib)</label>
+        <div class="menu-container">
+          <div class="menu-card" onclick="selectMenu('Ayam Bakar', this)">
+            <img src="img/menu1.png" alt="Ayam Bakar" />
+            <p>Ayam Bakar</p>
+          </div>
+          <div class="menu-card" onclick="selectMenu('Ayam Katsu', this)">
+            <img src="img/menu2.png" alt="Ayam Katsu" />
+            <p>Ayam Katsu</p>
+          </div>
+          <div class="menu-card" onclick="selectMenu('Ayam Hot Lava', this)">
+            <img src="img/menu3.png" alt="Ayam Hot Lava" />
+            <p>Ayam Hot Lava</p>
+          </div>
+        </div>
+        <input type="hidden" id="menu" />
+        <p class="field-err" id="err-menu"></p>
+      </div>
+
+      <div class="field" id="wrap-metode" style="display:none;">
+        <label>Metode Pembayaran</label>
+        <select id="metode" onchange="updateMetode()">
+          <option value="">-- Pilih Metode --</option>
+          <option value="qris">QRIS</option>
+          <option value="mandiri">Transfer Bank Mandiri</option>
+          <option value="ots">On The Spot (Bayar di Tempat)</option>
+        </select>
+        <p class="field-err" id="err-metode"></p>
+      </div>
+
+      <p class="err" id="err-msg"></p>
+      <button id="btn-daftar">Lanjut Pembayaran</button>
+    </div>
+
+    <div class="success" id="success-wrap">
+      <div style="font-size: 40px; margin-bottom: 12px;">🎉</div>
+      <h2>Pendaftaran Berhasil!</h2>
+      <p>Tiket sudah dikirim ke email kamu.<br/>Cek folder inbox atau spam.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/daftar.js"></script>
+  <script>
+    document.getElementById('btn-daftar').addEventListener('click', daftar)
+  </script>
+</body>
+</html>

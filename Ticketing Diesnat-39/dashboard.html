@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Peserta</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 2rem 1rem; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+    
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat { background: #fff; border-radius: 10px; padding: 1rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .stat-num { font-size: 28px; font-weight: 600; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+    
+    .card { background: #fff; border-radius: 10px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+    
+    th { text-align: left; padding: 12px 10px; border-bottom: 1px solid #eee; color: #888; font-weight: 500; transition: background 0.2s; position: relative; white-space: nowrap; vertical-align: middle; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #111; background-color: #f9f9f9; border-radius: 6px 6px 0 0; }
+    .sort-icon { display: inline-block; margin-left: 6px; font-size: 12px; color: #1a7f3c; font-weight: bold; }
+    
+    td { padding: 12px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    
+    .toolbar { display: flex; gap: 10px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+    .btn-refresh { padding: 8px 16px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .btn-refresh:hover { background: #333; }
+
+    .btn-konfirmasi { padding: 6px 12px; font-size: 12px; background: #1a7f3c; color: #fff; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+    .btn-konfirmasi:hover { background: #145f2e; }
+    .btn-konfirmasi:disabled { background: #999; cursor: not-allowed; }
+    
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #111; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 13px; display: none; z-index: 999; }
+    .toast.show { display: block; }
+
+    .context-menu { position: absolute; background: #2a2a2a; color: #eee; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); padding: 6px 0; min-width: 160px; display: none; z-index: 1000; font-size: 13px; }
+    .context-menu-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s; }
+    .context-menu-item:hover { background: #3a3a3a; color: #fff; }
+    .context-menu-divider { height: 1px; background: #444; margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Dashboard Peserta</h1>
+    <p class="sub" style="margin-bottom: 1rem;">Dies Natalis HME Ke-39</p>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="s-total">-</div><div class="stat-label">Total Daftar</div></div>
+      <div class="stat"><div class="stat-num" id="s-hadir">-</div><div class="stat-label">Sudah Hadir</div></div>
+      <div class="stat"><div class="stat-num" id="s-belum">-</div><div class="stat-label">Belum Hadir</div></div>
+    </div>
+    <div class="stats" style="margin-top: -8px;">
+      <div class="stat"><div class="stat-num" id="s-bakar" style="color:#d35400;">-</div><div class="stat-label">Ayam Bakar</div></div>
+      <div class="stat"><div class="stat-num" id="s-katsu" style="color:#d35400;">-</div><div class="stat-label">Ayam Katsu</div></div>
+      <div class="stat"><div class="stat-num" id="s-lava" style="color:#d35400;">-</div><div class="stat-label">Ayam Hot Lava</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-refresh" onclick="loadData()">Refresh Data</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" onclick="openSortMenu(event, 'nama')">Nama & Kontak <span class="sort-icon" id="icon-nama"></span></th>
+            <th class="sortable" onclick="openSortMenu(event, 'angkatan')">Angkatan <span class="sort-icon" id="icon-angkatan"></span></th>
+            <th>Harga</th>
+            <th>Kode Tiket</th>
+            <th class="sortable" onclick="openSortMenu(event, 'menu')">Menu <span class="sort-icon" id="icon-menu"></span></th>
+            <th class="sortable" onclick="openSortMenu(event, 'metode_bayar')">Metode <span class="sort-icon" id="icon-metode_bayar"></span></th>
+            <th class="sortable" onclick="openSortMenu(event, 'status_bayar')">Status Bayar <span class="sort-icon" id="icon-status_bayar"></span></th>
+            <th>Bukti</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tabel-peserta">
+          <tr><td colspan="9" style="text-align:center;color:#888;padding:2rem;">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div id="sort-menu" class="context-menu">
+    <div class="context-menu-item" onclick="applySort('asc')"><span>↑</span> Sort Ascending</div>
+    <div class="context-menu-item" onclick="applySort('desc')"><span>↓</span> Sort Descending</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" style="color: #ff6b6b;" onclick="applySort('clear')"><span>✕</span> Hapus Sortir</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
+    
+    // TODO: GANTI DENGAN URL GOOGLE APPS SCRIPT KAMU
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzN8UpkQpm3DxMq0VX73lM3PsaeGgjIuEtFkxaB3_t4T0veuEgD4oM3Ka_DMVndmuWp/exec"; 
+
+    let globalData = [];
+    let activeSortCol = null; let activeSortDir = null; let menuTargetCol = null; 
+
+    function showToast(pesan) {
+      const toast = document.getElementById('toast'); toast.textContent = pesan; toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000)
+    }
+
+    function formatMetode(metode) {
+      if (!metode) return '—';
+      const m = metode.toLowerCase();
+      if (m === 'qris') return 'QRIS';
+      if (m === 'mandiri' || m === 'bri') return 'Mandiri';
+      if (m === 'ots') return 'On The Spot';
+      return metode;
+    }
+
+    function badgeBayar(status) {
+      if (status === 'lunas') return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#e6f4ea;color:#1a7f3c">Lunas</span>';
+      if (status === 'menunggu_konfirmasi') return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cd;color:#856404">Menunggu Konfirmasi</span>';
+      return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#fdecea;color:#c0392b">Belum Bayar</span>';
+    }
+
+    function openSortMenu(e, col) {
+      menuTargetCol = col; const menu = document.getElementById('sort-menu');
+      menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = (e.pageY + 15) + 'px';
+      e.stopPropagation(); 
+    }
+    
+    document.addEventListener('click', () => {
+      const menu = document.getElementById('sort-menu'); if (menu && menu.style.display === 'block') menu.style.display = 'none';
+    });
+    
+    function applySort(dir) {
+      if (dir === 'clear') { activeSortCol = null; activeSortDir = null; } 
+      else { activeSortCol = menuTargetCol; activeSortDir = dir; }
+      renderTable();
+    }
+
+    async function konfirmasi(kode, btnEl) {
+      if (!confirm('Konfirmasi pembayaran (LUNAS) untuk kode ' + kode + '? E-Tiket QR akan dikirim ke email peserta.')) return
+      btnEl.disabled = true; btnEl.textContent = 'Memproses...';
+
+      const { error } = await dbClient.from('peserta').update({ status_bayar: 'lunas' }).eq('kode_tiket', kode)
+      if (error) { showToast('Gagal konfirmasi: ' + error.message); btnEl.disabled = false; btnEl.textContent = 'Konfirmasi'; return; }
+
+      const { data: peserta } = await dbClient.from('peserta').select('*').eq('kode_tiket', kode).single()
+      if (peserta) {
+        if (GAS_URL === "MASUKKAN_URL_GOOGLE_SCRIPT_DI_SINI") { showToast('✓ Lunas! Email gagal karena URL GAS belum dimasukkan.'); loadData(); return; }
+        try {
+          await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ nama: peserta.nama, email: peserta.email, kode_tiket: peserta.kode_tiket, menu: peserta.menu }) })
+          showToast('✓ Dikonfirmasi & E-Tiket dikirim ke ' + peserta.email)
+        } catch (e) { showToast('✓ Dikonfirmasi tapi gagal kirim email.') }
+      }
+      loadData()
+    }
+
+    function renderTable() {
+      // Menggunakan data asli karena fitur filter sudah dihapus
+      let displayData = [...globalData];
+
+      document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');
+      if (activeSortCol && activeSortDir) {
+        const icon = document.getElementById('icon-' + activeSortCol);
+        if (icon) icon.textContent = activeSortDir === 'asc' ? '↑' : '↓';
+        displayData.sort((a, b) => {
+          let valA = a[activeSortCol]; let valB = b[activeSortCol];
+          if (valA === null || valA === undefined) valA = ''; if (valB === null || valB === undefined) valB = '';
+          if (typeof valA === 'string') valA = valA.toLowerCase(); if (typeof valB === 'string') valB = valB.toLowerCase();
+          if (valA < valB) return activeSortDir === 'asc' ? -1 : 1; if (valA > valB) return activeSortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      if (displayData.length === 0) { document.getElementById('tabel-peserta').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:2rem;">Belum ada data.</td></tr>'; return; }
+
+      document.getElementById('tabel-peserta').innerHTML = displayData.map(p => {
+        const linkBukti = p.bukti_bayar ? `<a href="${CONFIG.supabase.url}/storage/v1/object/public/bukti-bayar/${p.bukti_bayar}" target="_blank" style="font-size:12px;color:#1a7f3c;font-weight:600;text-decoration:none;">Lihat</a>` : '—';
+        
+        const bisaDikonfirmasi = p.status_bayar === 'menunggu_konfirmasi' || (p.status_bayar === 'belum_bayar' && p.metode_bayar === 'ots');
+        const btnKonfirmasi = bisaDikonfirmasi ? `<button class="btn-konfirmasi" onclick="konfirmasi('${p.kode_tiket}', this)">Konfirmasi</button>` : '—';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:500;color:#111;margin-bottom:2px;">${p.nama}</div>
+              <div style="font-size:11px;color:#555;margin-bottom:2px;">${p.no_hp || '—'}</div>
+              <div style="font-size:11px;color:#888;">${p.email}</div>
+            </td>
+            <td>${p.angkatan || '—'}</td>
+            <td style="font-weight:500">Rp ${p.harga ? p.harga.toLocaleString('id-ID') : '—'}</td>
+            <td style="font-family:monospace;font-size:12px;color:#555;">${p.kode_tiket}</td>
+            <td style="font-weight:600;color:#111;">${p.menu || '—'}</td>
+            <td>${formatMetode(p.metode_bayar)}</td>
+            <td>${badgeBayar(p.status_bayar)}</td>
+            <td>${linkBukti}</td>
+            <td>${btnKonfirmasi}</td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    async function loadData() {
+      const { data, error } = await dbClient.from('peserta').select('*').order('created_at', { ascending: false })
+      if (error || !data) return;
+      globalData = data;
+      const total = data.length; const hadir = data.filter(p => p.sudah_hadir).length;
+      document.getElementById('s-total').textContent = total; document.getElementById('s-hadir').textContent = hadir; document.getElementById('s-belum').textContent = total - hadir;
+      document.getElementById('s-bakar').textContent = data.filter(p => p.menu === 'Ayam Bakar').length;
+      document.getElementById('s-katsu').textContent = data.filter(p => p.menu === 'Ayam Katsu').length;
+      document.getElementById('s-lava').textContent = data.filter(p => p.menu === 'Ayam Hot Lava').length;
+      renderTable();
+    }
+
+    loadData()
+  </script>
+</body>
+</html>
