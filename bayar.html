@@ -58,7 +58,7 @@
         </div>
         <div class="info-row">
           <span class="info-label">Status</span>
-          <span class="status-badge">Menunggu Pembayaran</span>
+          <span class="status-badge" id="badge-status">Menunggu Pembayaran</span>
         </div>
         <div class="info-row" style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
           <span class="info-label">Total Bayar</span>
@@ -80,19 +80,16 @@
     </div>
 
     <div class="success" id="success-wrap">
-      <div style="font-size:40px;margin-bottom:12px;">✅</div>
-      <h2>Bukti Pembayaran Terkirim!</h2>
-      <p>Panitia akan memverifikasi pembayaran.<br/>Tiket akan dikirim melalui email setelah dikonfirmasi.Terima Kasih!</p>
+      <div style="font-size:40px;margin-bottom:12px;" id="success-icon">✅</div>
+      <h2 id="success-title">Bukti Pembayaran Terkirim!</h2>
+      <p id="success-desc">Panitia akan memverifikasi pembayaran.<br/>Tiket akan dikirim melalui email setelah dikonfirmasi. Terima Kasih!</p>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script>
-    const dbClient = window.supabase.createClient(
-      CONFIG.supabase.url,
-      CONFIG.supabase.anonKey
-    )
+    const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
 
     const METODE_INFO = {
       qris: {
@@ -104,6 +101,14 @@
         html: `
           <p class="rekening">1120026485107</p>
           <p class="rekening-sub">a.n. Rizal Setia Putra</p>
+        `
+      },
+      ots: {
+        title: 'Pembayaran On The Spot (Di Tempat)',
+        html: `
+          <p style="font-size:14px; color:#555; line-height:1.5;">
+            Silakan bayar secara tunai di meja registrasi kepada panitia pada saat hari H acara. Tunjukkan Kode Tiket kamu kepada panitia.
+          </p>
         `
       }
     }
@@ -127,65 +132,48 @@
       document.getElementById('metode-detail').innerHTML = METODE_INFO[metode].html
     }
 
-    document.getElementById('btn-kirim').addEventListener('click', async function() {
-      const file = document.getElementById('bukti').files[0]
-      const btn = document.getElementById('btn-kirim')
-      const errBukti = document.getElementById('err-bukti')
+    // LOGIKA JIKA ON THE SPOT
+    if (metode === 'ots') {
+      document.getElementById('badge-status').textContent = 'Bayar di Tempat';
+      document.getElementById('badge-status').style.background = '#e6f4ea';
+      document.getElementById('badge-status').style.color = '#1a7f3c';
+      
+      const uploadWrap = document.getElementById('upload-wrap');
+      uploadWrap.innerHTML = '<button id="btn-selesai-ots" style="background:#1a7f3c; margin-top: 8px;">Selesai & Kembali ke Beranda</button>';
+      
+      document.getElementById('btn-selesai-ots').addEventListener('click', function() {
+        document.getElementById('main-wrap').style.display = 'none';
+        document.getElementById('success-title').textContent = 'Pendaftaran Tersimpan!';
+        document.getElementById('success-desc').innerHTML = 'Silakan Screenshot/simpan <b>Kode Tiket</b> kamu.<br/>Bayar tunai di meja registrasi saat acara.';
+        document.getElementById('success-wrap').style.display = 'block';
+        setTimeout(() => { window.location.href = 'index.html' }, 10000);
+      });
+    } else {
+      // LOGIKA JIKA TRANSFER/QRIS (Tetap Sama)
+      document.getElementById('btn-kirim').addEventListener('click', async function() {
+        const file = document.getElementById('bukti').files
+        const btn = document.getElementById('btn-kirim')
+        const errBukti = document.getElementById('err-bukti')
 
-      if (!file) {
-        errBukti.textContent = 'Pilih file bukti pembayaran terlebih dahulu.'
-        errBukti.style.display = 'block'
-        return
-      }
+        if (!file) { errBukti.textContent = 'Pilih file bukti pembayaran.'; errBukti.style.display = 'block'; return }
+        if (file.size > 2 * 1024 * 1024) { errBukti.textContent = 'Ukuran file maksimal 2MB.'; errBukti.style.display = 'block'; return }
 
-      if (file.size > 2 * 1024 * 1024) {
-        errBukti.textContent = 'Ukuran file maksimal 2MB.'
-        errBukti.style.display = 'block'
-        return
-      }
+        errBukti.style.display = 'none'; btn.disabled = true; btn.textContent = 'Mengirim...'
 
-      errBukti.style.display = 'none'
-      btn.disabled = true
-      btn.textContent = 'Mengirim...'
+        const ext = file.name.split('.').pop()
+        const fileName = kode + '_' + Date.now() + '.' + ext
 
-      const ext = file.name.split('.').pop()
-      const fileName = kode + '_' + Date.now() + '.' + ext
+        const { error: uploadError } = await dbClient.storage.from('bukti-bayar').upload(fileName, file)
+        if (uploadError) { errBukti.textContent = 'Gagal upload: ' + uploadError.message; errBukti.style.display = 'block'; btn.disabled = false; btn.textContent = 'Kirim Bukti Pembayaran'; return }
 
-      const { error: uploadError } = await dbClient.storage
-        .from('bukti-bayar')
-        .upload(fileName, file)
+        const { error: updateError } = await dbClient.from('peserta').update({ status_bayar: 'menunggu_konfirmasi', bukti_bayar: fileName, metode_bayar: metode }).eq('kode_tiket', kode)
+        if (updateError) { errBukti.textContent = 'Gagal update status: ' + updateError.message; errBukti.style.display = 'block'; btn.disabled = false; btn.textContent = 'Kirim Bukti Pembayaran'; return }
 
-      if (uploadError) {
-        errBukti.textContent = 'Gagal upload: ' + uploadError.message
-        errBukti.style.display = 'block'
-        btn.disabled = false
-        btn.textContent = 'Kirim Bukti Pembayaran'
-        return
-      }
-
-      const { error: updateError } = await dbClient
-        .from('peserta')
-        .update({
-          status_bayar: 'menunggu_konfirmasi',
-          bukti_bayar: fileName,
-          metode_bayar: metode
-        })
-        .eq('kode_tiket', kode)
-
-      if (updateError) {
-        errBukti.textContent = 'Gagal update status: ' + updateError.message
-        errBukti.style.display = 'block'
-        btn.disabled = false
-        btn.textContent = 'Kirim Bukti Pembayaran'
-        return
-      }
-
-      document.getElementById('main-wrap').style.display = 'none'
-      document.getElementById('success-wrap').style.display = 'block'
-      setTimeout(() => {
-        window.location.href = 'index.html'
-      }, 100000)
-    })
+        document.getElementById('main-wrap').style.display = 'none'
+        document.getElementById('success-wrap').style.display = 'block'
+        setTimeout(() => { window.location.href = 'index.html' }, 10000)
+      });
+    }
   </script>
 </body>
 </html>
