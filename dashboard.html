@@ -100,7 +100,7 @@
   <script>
     const dbClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey)
     
-    // TODO: GANTI DENGAN URL GOOGLE APPS SCRIPT KAMU
+    // GANTI DENGAN URL GOOGLE SCRIPT EMAIL POLBAN KAMU:
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzN8UpkQpm3DxMq0VX73lM3PsaeGgjIuEtFkxaB3_t4T0veuEgD4oM3Ka_DMVndmuWp/exec"; 
 
     let globalData = [];
@@ -161,7 +161,6 @@
     }
 
     function renderTable() {
-      // Menggunakan data asli karena fitur filter sudah dihapus
       let displayData = [...globalData];
 
       document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');

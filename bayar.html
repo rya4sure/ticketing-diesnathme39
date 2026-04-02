@@ -82,7 +82,7 @@
     <div class="success" id="success-wrap">
       <div style="font-size:40px;margin-bottom:12px;" id="success-icon">✅</div>
       <h2 id="success-title">Bukti Pembayaran Terkirim!</h2>
-      <p id="success-desc">Panitia akan memverifikasi pembayaran.<br/>Tiket akan dikirim melalui email setelah dikonfirmasi. Terima Kasih!</p>
+      <p id="success-desc">Panitia akan memverifikasi pembayaran.<br/>Tiket akan dikirim melalui email setelah dikonfirmasi.<br/>Terima Kasih!</p>
     </div>
   </div>
 
@@ -132,7 +132,6 @@
       document.getElementById('metode-detail').innerHTML = METODE_INFO[metode].html
     }
 
-    // LOGIKA JIKA ON THE SPOT
     if (metode === 'ots') {
       document.getElementById('badge-status').textContent = 'Bayar di Tempat';
       document.getElementById('badge-status').style.background = '#e6f4ea';
@@ -149,7 +148,6 @@
         setTimeout(() => { window.location.href = 'index.html' }, 10000);
       });
     } else {
-      // LOGIKA JIKA TRANSFER/QRIS (Tetap Sama)
       document.getElementById('btn-kirim').addEventListener('click', async function() {
         const file = document.getElementById('bukti').files
         const btn = document.getElementById('btn-kirim')
@@ -158,10 +156,14 @@
         if (!file) { errBukti.textContent = 'Pilih file bukti pembayaran.'; errBukti.style.display = 'block'; return }
         if (file.size > 2 * 1024 * 1024) { errBukti.textContent = 'Ukuran file maksimal 2MB.'; errBukti.style.display = 'block'; return }
 
-        errBukti.style.display = 'none'; btn.disabled = true; btn.textContent = 'Mengirim...'
+        errBukti.style.display = 'none'; 
+        btn.disabled = true; 
+        btn.textContent = 'Mengirim...';
 
-        const ext = file.name.split('.').pop()
-        const fileName = kode + '_' + Date.now() + '.' + ext
+        // BUG FIX BROWSER undefined
+        const namaFileAsli = file.name || 'bukti.png';
+        const ext = namaFileAsli.includes('.') ? namaFileAsli.split('.').pop() : 'png';
+        const fileName = kode + '_' + Date.now() + '.' + ext;
 
         const { error: uploadError } = await dbClient.storage.from('bukti-bayar').upload(fileName, file)
         if (uploadError) { errBukti.textContent = 'Gagal upload: ' + uploadError.message; errBukti.style.display = 'block'; btn.disabled = false; btn.textContent = 'Kirim Bukti Pembayaran'; return }

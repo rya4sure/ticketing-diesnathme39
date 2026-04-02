@@ -3,11 +3,11 @@ const dbClient = window.supabase.createClient(
   CONFIG.supabase.anonKey
 )
 
-// TODO: GANTI DENGAN URL GOOGLE SCRIPT KAMU BIAR PESERTA OTS TETAP DAPAT EMAIL TIKET
+// GANTI DENGAN URL GOOGLE SCRIPT EMAIL POLBAN KAMU:
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzN8UpkQpm3DxMq0VX73lM3PsaeGgjIuEtFkxaB3_t4T0veuEgD4oM3Ka_DMVndmuWp/exec";
 
 let isProcessing = false;
-let pendingOtsData = null; // Variabel untuk "mengingat" data OTS yang sedang di-scan
+let pendingOtsData = null; 
 
 async function validasi(scannedKode = null) {
   if (isProcessing) return; 
@@ -27,7 +27,7 @@ async function validasi(scannedKode = null) {
   btn.disabled = true
   btn.textContent = 'Mengecek...'
   result.style.display = 'none'
-  btnOts.style.display = 'none'; // Sembunyikan tombol konfirmasi OTS dari scan sebelumnya
+  btnOts.style.display = 'none'; 
 
   if (scannedKode) {
     document.getElementById('kode-input').value = kode;
@@ -51,14 +51,13 @@ async function validasi(scannedKode = null) {
     return
   }
 
-  // --- CEK STATUS PEMBAYARAN ---
   if (data.status_bayar !== 'lunas') {
     let tagihan = data.harga ? 'Rp ' + data.harga.toLocaleString('id-ID') : 'Rp -';
     
     if (data.metode_bayar === 'ots') {
-      pendingOtsData = data; // Ingat data anak ini
+      pendingOtsData = data; 
       tampilResult('gagal', '⚠️ BELUM LUNAS (OTS)', `${data.nama} mendaftar On The Spot.\nTagihan: ${tagihan}`);
-      btnOts.style.display = 'block'; // MUNCULKAN TOMBOL "TERIMA UANG"
+      btnOts.style.display = 'block'; 
     } else {
       tampilResult('gagal', '⚠️ BELUM LUNAS', `${data.nama} belum menyelesaikan pembayaran atau masih menunggu konfirmasi panitia.`);
     }
@@ -67,7 +66,6 @@ async function validasi(scannedKode = null) {
     return
   }
 
-  // JIKA SUDAH LUNAS -> LANGSUNG CHECK IN
   const { error: updateError } = await dbClient
     .from('peserta')
     .update({ sudah_hadir: true })
@@ -85,7 +83,6 @@ async function validasi(scannedKode = null) {
   selesaiProses(btn)
 }
 
-// --- FUNGSI EKSEKUSI TOMBOL OTS ---
 async function konfirmasiOTS() {
   if (!pendingOtsData || isProcessing) return;
   isProcessing = true;
@@ -94,7 +91,6 @@ async function konfirmasiOTS() {
   btnOts.disabled = true;
   btnOts.textContent = 'Memproses...';
 
-  // 1. Ubah database jadi LUNAS dan HADIR sekaligus!
   const { error } = await dbClient
     .from('peserta')
     .update({ status_bayar: 'lunas', sudah_hadir: true })
@@ -108,17 +104,14 @@ async function konfirmasiOTS() {
     return;
   }
 
-  // 2. Bunyikan Alarm Masuk
   playBeep();
 
-  // 3. Ubah UI Scanner jadi Hijau
   tampilResult('sukses', '✅ Lunas & Hadir!', pendingOtsData.nama + ' telah bayar tunai dan otomatis Check-in.');
   btnOts.style.display = 'none';
   btnOts.disabled = false;
   btnOts.textContent = 'Terima Uang & Konfirmasi Hadir';
   document.getElementById('kode-input').value = '';
 
-  // 4. Kirim Email di Latar Belakang (Tidak bikin layar nge-lag)
   if (GAS_URL && GAS_URL !== "MASUKKAN_URL_GOOGLE_SCRIPT_DI_SINI") {
     fetch(GAS_URL, {
       method: 'POST',
@@ -129,10 +122,10 @@ async function konfirmasiOTS() {
         kode_tiket: pendingOtsData.kode_tiket,
         menu: pendingOtsData.menu
       })
-    }).catch(e => console.log('Email gagal terkirim (background)'));
+    }).catch(e => console.log('Email gagal terkirim'));
   }
 
-  pendingOtsData = null; // Bersihkan memori
+  pendingOtsData = null;
   isProcessing = false;
 }
 

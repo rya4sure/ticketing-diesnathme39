@@ -85,53 +85,12 @@ async function daftar() {
 
   let valid = true
 
-  if (!nama) {
-    tampilErr('err-nama', 'Nama tidak boleh kosong.')
-    valid = false
-  } else {
-    tampilErr('err-nama', '')
-  }
-
-  if (!email) {
-    tampilErr('err-email', 'Email tidak boleh kosong.')
-    valid = false
-  } else if (!validasiEmail(email)) {
-    tampilErr('err-email', 'Format email tidak valid.')
-    valid = false
-  } else {
-    tampilErr('err-email', '')
-  }
-
-  if (!hp) {
-    tampilErr('err-hp', 'No. HP tidak boleh kosong.')
-    valid = false
-  } else if (!validasiHP(hp)) {
-    tampilErr('err-hp', 'Format No. HP tidak valid. Contoh: 081234567890')
-    valid = false
-  } else {
-    tampilErr('err-hp', '')
-  }
-
-  if (!angkatan) {
-    tampilErr('err-angkatan', 'Pilih angkatan terlebih dahulu.')
-    valid = false
-  } else {
-    tampilErr('err-angkatan', '')
-  }
-
-  if (!menu) {
-    tampilErr('err-menu', 'Pilih menu makanan terlebih dahulu.')
-    valid = false
-  } else {
-    tampilErr('err-menu', '')
-  }
-
-  if (!metode) {
-    tampilErr('err-metode', 'Pilih metode pembayaran terlebih dahulu.')
-    valid = false
-  } else {
-    tampilErr('err-metode', '')
-  }
+  if (!nama) { tampilErr('err-nama', 'Nama tidak boleh kosong.'); valid = false } else { tampilErr('err-nama', '') }
+  if (!email) { tampilErr('err-email', 'Email tidak boleh kosong.'); valid = false } else if (!validasiEmail(email)) { tampilErr('err-email', 'Format email tidak valid.'); valid = false } else { tampilErr('err-email', '') }
+  if (!hp) { tampilErr('err-hp', 'No. HP tidak boleh kosong.'); valid = false } else if (!validasiHP(hp)) { tampilErr('err-hp', 'Format No. HP tidak valid. Contoh: 081234567890'); valid = false } else { tampilErr('err-hp', '') }
+  if (!angkatan) { tampilErr('err-angkatan', 'Pilih angkatan terlebih dahulu.'); valid = false } else { tampilErr('err-angkatan', '') }
+  if (!menu) { tampilErr('err-menu', 'Pilih menu makanan terlebih dahulu.'); valid = false } else { tampilErr('err-menu', '') }
+  if (!metode) { tampilErr('err-metode', 'Pilih metode pembayaran terlebih dahulu.'); valid = false } else { tampilErr('err-metode', '') }
 
   if (!valid) return
 
@@ -141,20 +100,9 @@ async function daftar() {
   const kode = genKode()
   const harga = HARGA[angkatan]
 
-  // Simpan data pendaftaran ke Supabase
   const { error } = await dbClient
     .from('peserta')
-    .insert([{
-      nama,
-      email,
-      no_hp: hp,
-      kode_tiket: kode,
-      angkatan,
-      harga,
-      metode_bayar: metode,
-      status_bayar: 'belum_bayar',
-      menu: menu
-    }])
+    .insert([{ nama, email, no_hp: hp, kode_tiket: kode, angkatan, harga, metode_bayar: metode, status_bayar: 'belum_bayar', menu: menu }])
 
   if (error) {
     document.getElementById('err-msg').textContent = 'Gagal mendaftar: ' + error.message
@@ -164,7 +112,6 @@ async function daftar() {
     return
   }
 
-  // Jika sukses masuk database, langsung lempar ke halaman bayar
   const angkatanLabel = LABEL_ANGKATAN[angkatan]
   window.location.href = `bayar.html?kode=${kode}&nama=${encodeURIComponent(nama)}&angkatan=${encodeURIComponent(angkatanLabel)}&harga=${harga}&metode=${metode}&menu=${encodeURIComponent(menu)}`
 }
