@@ -71,16 +71,11 @@
         <div id="metode-detail"></div>
       </div>
 
-      <div id="upload-wrap">
-        <label>Upload Bukti Pembayaran</label>
-        <input type="file" id="bukti" accept="image/*" />
-        <p class="field-err" id="err-bukti"></p>
-        <button id="btn-kirim">Kirim Bukti Pembayaran</button>
-      </div>
+      <div id="upload-wrap"></div>
     </div>
 
     <div class="success" id="success-wrap">
-      <div style="font-size:40px;margin-bottom:12px;" id="success-icon">✅</div>
+      <div style="font-size:40px;margin-bottom:12px;">✅</div>
       <h2 id="success-title">Bukti Pembayaran Terkirim!</h2>
       <p id="success-desc">Panitia akan memverifikasi pembayaran.<br/>Tiket akan dikirim melalui email setelah dikonfirmasi.<br/>Terima Kasih!</p>
     </div>
@@ -106,8 +101,8 @@
       ots: {
         title: 'Pembayaran On The Spot (Di Tempat)',
         html: `
-          <p style="font-size:14px; color:#555; line-height:1.5;">
-            Silakan bayar secara tunai di meja registrasi kepada panitia pada saat hari H acara. Tunjukkan Kode Tiket kamu kepada panitia.
+          <p style="font-size:14px;color:#555;line-height:1.5;">
+            Silakan bayar secara tunai di meja registrasi kepada panitia pada hari H. Tunjukkan Kode Tiket kamu kepada panitia.
           </p>
         `
       }
@@ -121,6 +116,8 @@
     const metode = params.get('metode')
     const menu = params.get('menu')
 
+    if (!kode) window.location.href = 'index.html'
+
     document.getElementById('i-nama').textContent = nama || '—'
     document.getElementById('i-angkatan').textContent = angkatan || '—'
     document.getElementById('i-menu').textContent = menu || '—'
@@ -132,49 +129,85 @@
       document.getElementById('metode-detail').innerHTML = METODE_INFO[metode].html
     }
 
+    const uploadWrap = document.getElementById('upload-wrap')
+
     if (metode === 'ots') {
-      document.getElementById('badge-status').textContent = 'Bayar di Tempat';
-      document.getElementById('badge-status').style.background = '#e6f4ea';
-      document.getElementById('badge-status').style.color = '#1a7f3c';
-      
-      const uploadWrap = document.getElementById('upload-wrap');
-      uploadWrap.innerHTML = '<button id="btn-selesai-ots" style="background:#1a7f3c; margin-top: 8px;">Selesai & Kembali ke Beranda</button>';
-      
-      document.getElementById('btn-selesai-ots').addEventListener('click', function() {
-        document.getElementById('main-wrap').style.display = 'none';
-        document.getElementById('success-title').textContent = 'Pendaftaran Tersimpan!';
-        document.getElementById('success-desc').innerHTML = 'Silakan Screenshot/simpan <b>Kode Tiket</b> kamu.<br/>Bayar tunai di meja registrasi saat acara.';
-        document.getElementById('success-wrap').style.display = 'block';
-        setTimeout(() => { window.location.href = 'index.html' }, 10000);
-      });
+      document.getElementById('badge-status').textContent = 'Bayar di Tempat'
+      document.getElementById('badge-status').style.background = '#e6f4ea'
+      document.getElementById('badge-status').style.color = '#1a7f3c'
+
+      uploadWrap.innerHTML = '<button id="btn-selesai-ots" style="background:#1a7f3c;margin-top:8px;">Selesai & Kembali ke Beranda</button>'
+
+      document.getElementById('btn-selesai-ots').addEventListener('click', async function() {
+        await dbClient.from('peserta').update({ status_bayar: 'ots', metode_bayar: 'ots' }).eq('kode_tiket', kode)
+        document.getElementById('main-wrap').style.display = 'none'
+        document.getElementById('success-title').textContent = 'Pendaftaran Tersimpan!'
+        document.getElementById('success-desc').innerHTML = 'Silakan screenshot/simpan <b>Kode Tiket</b> kamu.<br/>Bayar tunai di meja registrasi saat acara.'
+        document.getElementById('success-wrap').style.display = 'block'
+        setTimeout(() => { window.location.href = 'index.html' }, 10000)
+      })
+
     } else {
+      uploadWrap.innerHTML = `
+        <label>Upload Bukti Pembayaran</label>
+        <input type="file" id="bukti" accept="image/*" />
+        <p class="field-err" id="err-bukti"></p>
+        <button id="btn-kirim">Kirim Bukti Pembayaran</button>
+      `
+
       document.getElementById('btn-kirim').addEventListener('click', async function() {
-        const file = document.getElementById('bukti').files
+        const file = document.getElementById('bukti').files[0]
         const btn = document.getElementById('btn-kirim')
         const errBukti = document.getElementById('err-bukti')
 
-        if (!file) { errBukti.textContent = 'Pilih file bukti pembayaran.'; errBukti.style.display = 'block'; return }
-        if (file.size > 2 * 1024 * 1024) { errBukti.textContent = 'Ukuran file maksimal 2MB.'; errBukti.style.display = 'block'; return }
+        if (!file) {
+          errBukti.textContent = 'Pilih file bukti pembayaran terlebih dahulu.'
+          errBukti.style.display = 'block'
+          return
+        }
 
-        errBukti.style.display = 'none'; 
-        btn.disabled = true; 
-        btn.textContent = 'Mengirim...';
+        if (file.size > 2 * 1024 * 1024) {
+          errBukti.textContent = 'Ukuran file maksimal 2MB.'
+          errBukti.style.display = 'block'
+          return
+        }
 
-        // BUG FIX BROWSER undefined
-        const namaFileAsli = file.name || 'bukti.png';
-        const ext = namaFileAsli.includes('.') ? namaFileAsli.split('.').pop() : 'png';
-        const fileName = kode + '_' + Date.now() + '.' + ext;
+        errBukti.style.display = 'none'
+        btn.disabled = true
+        btn.textContent = 'Mengirim...'
 
-        const { error: uploadError } = await dbClient.storage.from('bukti-bayar').upload(fileName, file)
-        if (uploadError) { errBukti.textContent = 'Gagal upload: ' + uploadError.message; errBukti.style.display = 'block'; btn.disabled = false; btn.textContent = 'Kirim Bukti Pembayaran'; return }
+        const ext = file.name.split('.').pop() || 'png'
+        const fileName = kode + '_' + Date.now() + '.' + ext
 
-        const { error: updateError } = await dbClient.from('peserta').update({ status_bayar: 'menunggu_konfirmasi', bukti_bayar: fileName, metode_bayar: metode }).eq('kode_tiket', kode)
-        if (updateError) { errBukti.textContent = 'Gagal update status: ' + updateError.message; errBukti.style.display = 'block'; btn.disabled = false; btn.textContent = 'Kirim Bukti Pembayaran'; return }
+        const { error: uploadError } = await dbClient.storage
+          .from('bukti-bayar')
+          .upload(fileName, file, { contentType: file.type })
+
+        if (uploadError) {
+          errBukti.textContent = 'Gagal upload: ' + uploadError.message
+          errBukti.style.display = 'block'
+          btn.disabled = false
+          btn.textContent = 'Kirim Bukti Pembayaran'
+          return
+        }
+
+        const { error: updateError } = await dbClient
+          .from('peserta')
+          .update({ status_bayar: 'menunggu_konfirmasi', bukti_bayar: fileName, metode_bayar: metode })
+          .eq('kode_tiket', kode)
+
+        if (updateError) {
+          errBukti.textContent = 'Gagal update status: ' + updateError.message
+          errBukti.style.display = 'block'
+          btn.disabled = false
+          btn.textContent = 'Kirim Bukti Pembayaran'
+          return
+        }
 
         document.getElementById('main-wrap').style.display = 'none'
         document.getElementById('success-wrap').style.display = 'block'
         setTimeout(() => { window.location.href = 'index.html' }, 10000)
-      });
+      })
     }
   </script>
 </body>
