@@ -66,7 +66,7 @@
         </div>
       </div>
 
-      <div class="metode-box" id="metode-box">
+      <div class="metode-box">
         <h2 id="metode-title">Instruksi Pembayaran</h2>
         <div id="metode-detail"></div>
       </div>
@@ -139,7 +139,9 @@
       uploadWrap.innerHTML = '<button id="btn-selesai-ots" style="background:#1a7f3c;margin-top:8px;">Selesai & Kembali ke Beranda</button>'
 
       document.getElementById('btn-selesai-ots').addEventListener('click', async function() {
-        await dbClient.from('peserta').update({ status_bayar: 'ots', metode_bayar: 'ots' }).eq('kode_tiket', kode)
+        await dbClient.from('peserta')
+          .update({ status_bayar: 'ots', metode_bayar: 'ots' })
+          .eq('kode_tiket', kode)
         document.getElementById('main-wrap').style.display = 'none'
         document.getElementById('success-title').textContent = 'Pendaftaran Tersimpan!'
         document.getElementById('success-desc').innerHTML = 'Silakan screenshot/simpan <b>Kode Tiket</b> kamu.<br/>Bayar tunai di meja registrasi saat acara.'
