@@ -220,7 +220,7 @@
         return `
           <tr>
             <td>
-              <div style="font-weight:500;color:#111;margin-bottom:2px;">${p.nama}</div>
+              <div style="font-weight:500;color:${p.sudah_hadir ? '#1a7f3c' : '#111'};margin-bottom:2px;">${p.nama}</div>
               <div style="font-size:11px;color:#555;margin-bottom:2px;">${p.no_hp || '—'}</div>
               <div style="font-size:11px;color:#888;">${p.email}</div>
             </td>
